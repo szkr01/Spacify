@@ -1,0 +1,23 @@
+# Build output
+build/
+build-*/
+out/
+dist/
+
+# Vendored dependencies
+external/
+
+# Visual Studio / CMake
+.vs/
+CMakeUserPresets.json
+*.user
+
+# JUCE generated
+JuceLibraryCode/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Dev scratch (UI snapshots, test renders, measurements)
+scratch/
