@@ -11,6 +11,8 @@ Input ──┬─────────────────────�
 
 出力は常に `Dry + SpaceLayer × SPACE` の**加算合成**です。SPACE を上げてもドライ音が小さくなることはありません。
 
+![Spacify の UI](docs/ui.png)
+
 ---
 
 ## パラメータ
