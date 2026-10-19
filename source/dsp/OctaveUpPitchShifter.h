@@ -132,9 +132,9 @@ private:
     }
 
     double sampleRate = 48000.0;
-    double grainSeconds = 0.10;
-    int grainSamples = 4800;
-    int bufferSize = 4808;
+    double grainSeconds = 0.055;
+    int grainSamples = 2640;
+    int bufferSize = 2648;
     int writeIndex = 0;
     double phase = 0.0;
     std::vector<std::vector<float>> delayLines;

@@ -23,10 +23,11 @@ public:
                  const juce::String& parameterID,
                  const juce::String& displayName,
                  Formatter valueFormatter,
-                 float nameFontHeight,
-                 float valueFontHeight,
-                 int spacing);
+                 float nameFontHeight = 13.5f,
+                 float valueFontHeight = 16.5f,
+                 int spacing = 4);
 
+    void paint (juce::Graphics&) override;
     void resized() override;
     void mouseWheelMove (const juce::MouseEvent&, const juce::MouseWheelDetails&) override;
 
@@ -36,14 +37,18 @@ private:
     void refreshValueText();
 
     juce::Slider slider;
-    juce::Label nameLabel;
-    juce::Label valueLabel;
+    juce::String labelText;
+    juce::String valueText;
+    juce::Rectangle<int> nameArea;
+    juce::Rectangle<int> valueArea;
     juce::AudioProcessorValueTreeState::SliderAttachment attachment;
     Formatter format;
 
-    float nameFontHeight = 12.0f;
-    float valueFontHeight = 14.0f;
-    int spacing = 8;
+    float baseNameFontHeight = 13.5f;
+    float baseValueFontHeight = 16.5f;
+    float currentNameFontHeight = 13.5f;
+    float currentValueFontHeight = 16.5f;
+    int spacing = 4;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SpacifyKnob)
 };

@@ -5,17 +5,13 @@ namespace spacify
 
 namespace
 {
-    constexpr int layoutMargin        = 40;
-    constexpr int bigKnobSize         = 190;
-    constexpr int smallKnobSize       = 96;
-    constexpr int smallKnobSpacing    = 128;
-    constexpr int smallKnobRowTop     = 362;
-    constexpr int bypassRowTop        = 516;
-    constexpr int bypassRowHeight     = 30;
+    constexpr int baseOuterMargin  = 16;
+    constexpr int baseHeaderHeight = 46;
+    constexpr float baseCardRadius = 14.0f;
 
-    juce::String percentFormatter (float value)  { return SpacifyAudioProcessor::formatPercent (value); }
-    juce::String frequencyFormatter (float value){ return SpacifyAudioProcessor::formatFrequency (value); }
-    juce::String durationFormatter (float value) { return SpacifyAudioProcessor::formatDuration (value); }
+    juce::String percentFormatter (float value)   { return SpacifyAudioProcessor::formatPercent (value); }
+    juce::String frequencyFormatter (float value) { return SpacifyAudioProcessor::formatFrequency (value); }
+    juce::String durationFormatter (float value)  { return SpacifyAudioProcessor::formatDuration (value); }
 }
 
 //==============================================================================
@@ -23,32 +19,26 @@ SpacifyAudioProcessorEditor::SpacifyAudioProcessorEditor (SpacifyAudioProcessor&
     : juce::AudioProcessorEditor (&processorToEdit),
       processorRef (processorToEdit),
       spaceKnob (processorToEdit.apvts, SpacifyAudioProcessor::spaceParameterID, "SPACE",
-                 percentFormatter, 13.0f, 26.0f, 0),
+                 percentFormatter, 13.5f, 16.5f, 6),
       fuzzKnob (processorToEdit.apvts, SpacifyAudioProcessor::fuzzParameterID, "FUZZ",
-                percentFormatter, 11.0f, 13.0f, 0),
+                percentFormatter, 13.5f, 16.5f, 6),
       toneKnob (processorToEdit.apvts, SpacifyAudioProcessor::toneParameterID, "TONE",
-                frequencyFormatter, 11.0f, 13.0f, 0),
+                frequencyFormatter, 13.5f, 16.5f, 6),
       decayKnob (processorToEdit.apvts, SpacifyAudioProcessor::decayParameterID, "DECAY",
-                 durationFormatter, 11.0f, 13.0f, 0),
-      bypassAttachment (processorToEdit.apvts, SpacifyAudioProcessor::bypassParameterID, bypassButton)
+                 durationFormatter, 13.5f, 16.5f, 6)
 {
     setLookAndFeel (&lookAndFeel);
-
-    bypassButton.setButtonText ("Bypass");
-    bypassButton.setWantsKeyboardFocus (false);
-    bypassButton.onStateChange = [this] { updateBypassVisualState(); };
 
     addAndMakeVisible (spaceKnob);
     addAndMakeVisible (fuzzKnob);
     addAndMakeVisible (toneKnob);
     addAndMakeVisible (decayKnob);
-    addAndMakeVisible (bypassButton);
 
     setOpaque (true);
-    setResizable (false, false);
+    setResizable (true, true);
+    setResizeLimits (460, 184, 1440, 576);
+    getConstrainer()->setFixedAspectRatio ((double) editorWidth / (double) editorHeight);
     setSize (editorWidth, editorHeight);
-
-    updateBypassVisualState();
 }
 
 SpacifyAudioProcessorEditor::~SpacifyAudioProcessorEditor()
@@ -60,82 +50,93 @@ SpacifyAudioProcessorEditor::~SpacifyAudioProcessorEditor()
 void SpacifyAudioProcessorEditor::paint (juce::Graphics& g)
 {
     const auto bounds = getLocalBounds().toFloat();
+    const float scale = juce::jlimit (0.6f, 2.5f,
+                                      juce::jmin (bounds.getWidth() / (float) editorWidth,
+                                                  bounds.getHeight() / (float) editorHeight));
+    const float cardRadius = baseCardRadius * scale;
 
-    g.setGradientFill (juce::ColourGradient (ui::palette::backgroundTop, 0.0f, 0.0f,
-                                             ui::palette::backgroundBottom, 0.0f, bounds.getBottom(),
+    // Warm alabaster outer canvas
+    g.setGradientFill (juce::ColourGradient (ui::palette::canvasTop, 0.0f, 0.0f,
+                                             ui::palette::canvasBottom, 0.0f, bounds.getBottom(),
                                              false));
     g.fillRect (bounds);
 
-    // Soft aura behind the main control.
-    const auto glowCentre = juce::Point<float> (bounds.getCentreX(), (float) titleArea.getBottom() + 110.0f);
-    const float glowRadius = bounds.getWidth() * 0.42f;
+    const auto card = cardBounds.toFloat();
 
-    juce::ColourGradient glow (ui::palette::accentViolet.withAlpha (bypassed ? 0.04f : 0.13f),
-                               glowCentre.x, glowCentre.y,
-                               juce::Colours::transparentBlack,
-                               glowCentre.x, glowCentre.y + glowRadius, true);
-    g.setGradientFill (glow);
-    g.fillEllipse (juce::Rectangle<float> (glowRadius * 2.0f, glowRadius * 2.0f).withCentre (glowCentre));
+    // Subtle elevation shadow beneath card
+    g.setColour (juce::Colour (0x0c0f172a));
+    g.fillRoundedRectangle (card.translated (0.0f, 2.5f * scale), cardRadius);
 
-    juce::ColourGradient hairline;
-    hairline.addColour (0.0, juce::Colours::transparentBlack);
-    hairline.addColour (0.5, ui::palette::hairline);
-    hairline.addColour (1.0, juce::Colours::transparentBlack);
-    hairline.point1 = { (float) layoutMargin, 0.0f };
-    hairline.point2 = { (float) (getWidth() - layoutMargin), 0.0f };
+    // Pure white card surface
+    g.setColour (ui::palette::surface);
+    g.fillRoundedRectangle (card, cardRadius);
 
-    g.setGradientFill (hairline);
-    g.fillRect (layoutMargin, hairlineY, getWidth() - layoutMargin * 2, 1);
+    // Subtle tint for the primary SPACE section on the left
+    {
+        juce::Graphics::ScopedSaveState save (g);
+        juce::Path cardClip;
+        cardClip.addRoundedRectangle (card, cardRadius);
+        g.reduceClipRegion (cardClip);
 
-    const float titleAlpha = bypassed ? 0.45f : 1.0f;
+        g.setColour (ui::palette::surfaceSubtle);
+        g.fillRect (juce::Rectangle<int> (cardBounds.getX(), headerBounds.getBottom(),
+                                          dividerX - cardBounds.getX(),
+                                          cardBounds.getBottom() - headerBounds.getBottom()));
+    }
 
-    g.setColour (ui::palette::textPrimary.withAlpha (0.86f * titleAlpha));
-    ui::drawTrackedText (g, "SPACIFY", titleArea, juce::Justification::centred,
-                         ui::makeFont (14.0f, {}, 0.34f), 0.34f);
+    // Header separator & vertical section divider
+    const int dividerPad = juce::roundToInt (16.0f * scale);
+    g.setColour (ui::palette::divider);
+    g.fillRect (cardBounds.getX() + 1, headerBounds.getBottom(), cardBounds.getWidth() - 2, 1);
+    g.fillRect (dividerX, headerBounds.getBottom() + dividerPad, 1,
+                juce::jmax (1, cardBounds.getBottom() - headerBounds.getBottom() - dividerPad * 2));
 
-    g.setColour (ui::palette::textDim.withAlpha (0.75f * titleAlpha));
-    ui::drawTrackedText (g, juce::String::fromUTF8 ("OCTAVE UP  \xc2\xb7  WET 100 %"), footerArea,
-                         juce::Justification::centredLeft,
-                         ui::makeFont (10.0f, {}, 0.16f), 0.16f);
+    // Crisp 1px card border
+    g.setColour (ui::palette::border);
+    g.drawRoundedRectangle (card.reduced (0.5f), cardRadius, 1.0f);
+
+    // Brand mark: cobalt status dot + tracked SPACIFY title
+    const float dotSize = 7.5f * scale;
+    const float dotX = (float) headerBounds.getX() + 20.0f * scale;
+    const float dotY = (float) headerBounds.getCentreY() - dotSize * 0.5f;
+
+    juce::ColourGradient dotGradient (ui::palette::accentPrimary, dotX, dotY,
+                                      ui::palette::accentSecondary, dotX + dotSize, dotY + dotSize, false);
+    g.setGradientFill (dotGradient);
+    g.fillEllipse (dotX, dotY, dotSize, dotSize);
+
+    auto titleRect = headerBounds.withTrimmedLeft (juce::roundToInt (36.0f * scale));
+    g.setColour (ui::palette::textPrimary);
+    ui::drawTrackedText (g, "SPACIFY", titleRect, juce::Justification::centredLeft,
+                         ui::makeFont (14.5f * scale, "Bold", 0.24f), 0.24f);
 }
 
 void SpacifyAudioProcessorEditor::resized()
 {
-    titleArea = { 0, 30, getWidth(), 22 };
+    const float scale = juce::jlimit (0.6f, 2.5f,
+                                      juce::jmin ((float) getWidth() / (float) editorWidth,
+                                                  (float) getHeight() / (float) editorHeight));
 
-    const int centreX = getWidth() / 2;
+    const int outerMargin  = juce::roundToInt ((float) baseOuterMargin * scale);
+    const int headerHeight = juce::roundToInt ((float) baseHeaderHeight * scale);
 
-    const int bigKnobHeight = juce::roundToInt (13.0f * 1.6f) + bigKnobSize + juce::roundToInt (26.0f * 1.6f);
-    spaceKnob.setBounds (centreX - bigKnobSize / 2, titleArea.getBottom() + 30,
-                         bigKnobSize, bigKnobHeight);
+    cardBounds   = getLocalBounds().reduced (outerMargin);
+    headerBounds = cardBounds.withHeight (headerHeight);
 
-    const int smallKnobHeight = juce::roundToInt (11.0f * 1.6f) + smallKnobSize + juce::roundToInt (13.0f * 1.6f);
+    const auto bodyArea = cardBounds.withTrimmedTop (headerHeight + 1);
+    const int colWidth  = bodyArea.getWidth() / 4;
 
-    fuzzKnob.setBounds  (centreX - smallKnobSpacing - smallKnobSize / 2, smallKnobRowTop,
-                         smallKnobSize, smallKnobHeight);
-    toneKnob.setBounds  (centreX - smallKnobSize / 2, smallKnobRowTop,
-                         smallKnobSize, smallKnobHeight);
-    decayKnob.setBounds (centreX + smallKnobSpacing - smallKnobSize / 2, smallKnobRowTop,
-                         smallKnobSize, smallKnobHeight);
+    dividerX = bodyArea.getX() + colWidth;
 
-    bypassButton.setBounds (getWidth() - layoutMargin - 160, bypassRowTop, 160, bypassRowHeight);
-    footerArea = { layoutMargin, bypassRowTop, 400, bypassRowHeight };
-}
+    const int topPad     = juce::roundToInt (12.0f * scale);
+    const int bottomPad  = juce::roundToInt (10.0f * scale);
+    const int knobTop    = bodyArea.getY() + topPad;
+    const int knobHeight = juce::jmax (60, bodyArea.getHeight() - topPad - bottomPad);
 
-void SpacifyAudioProcessorEditor::updateBypassVisualState()
-{
-    const bool nowBypassed = bypassButton.getToggleState();
-
-    bypassed = nowBypassed;
-
-    const float alpha = bypassed ? 0.35f : 1.0f;
-
-    spaceKnob.setAlpha (alpha);
-    fuzzKnob.setAlpha (alpha);
-    toneKnob.setAlpha (alpha);
-    decayKnob.setAlpha (alpha);
-
-    repaint();
+    spaceKnob.setBounds (bodyArea.getX() + colWidth * 0, knobTop, colWidth, knobHeight);
+    fuzzKnob.setBounds  (bodyArea.getX() + colWidth * 1, knobTop, colWidth, knobHeight);
+    toneKnob.setBounds  (bodyArea.getX() + colWidth * 2, knobTop, colWidth, knobHeight);
+    decayKnob.setBounds (bodyArea.getX() + colWidth * 3, knobTop, colWidth, knobHeight);
 }
 
 } // namespace spacify

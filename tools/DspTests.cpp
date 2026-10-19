@@ -439,6 +439,37 @@ void testWetLevel()
     info ("difference  " + juce::String (juce::Decibels::gainToDecibels (wetRms / juce::jmax (1.0e-9, dryRms)), 1) + " dB");
 
     check (wetRms > 1.0e-4, "the generated layer has a usable level");
+
+    // Verify level consistency across the entire DECAY range (0.01 s .. 20.0 s),
+    // specifically checking 0.16 s where the old (1 - feedback) + non-unitary allpass blew up by +30 dB.
+    const float testDecays[] = { 0.01f, 0.05f, 0.16f, 0.50f, 2.0f, 8.0f, 20.0f };
+    double minDb = 1000.0, maxDb = -1000.0;
+
+    for (float d : testDecays)
+    {
+        Harness hd (sampleRate, 256);
+        hd.set (SpacifyAudioProcessor::bypassParameterID, 0.0f);
+        hd.set (SpacifyAudioProcessor::spaceParameterID, 100.0f);
+        hd.set (SpacifyAudioProcessor::decayParameterID, d);
+
+        auto buf = dry;
+        hd.processInChunks (buf);
+
+        juce::AudioBuffer<float> decLayer (1, totalSamples);
+        for (int i = 0; i < totalSamples; ++i)
+            decLayer.setSample (0, i, buf.getSample (0, i) - dry.getSample (0, i));
+
+        const double decRms = rms (decLayer.getReadPointer (0) + start, length);
+        const double db = juce::Decibels::gainToDecibels (decRms);
+        minDb = juce::jmin (minDb, db);
+        maxDb = juce::jmax (maxDb, db);
+
+        info ("layer RMS at DECAY = " + juce::String (d, 2) + " s : " + juce::String (db, 1) + " dBFS");
+    }
+
+    check ((maxDb - minDb) < 6.0,
+           "wet layer loudness stays consistent across all DECAY values (0.01 s .. 20.0 s)",
+           "spread " + juce::String (maxDb - minDb, 1) + " dB");
 }
 
 void testStability()

@@ -73,7 +73,18 @@ Write-Host ">> cmake --build $buildDir --config $Configuration" -ForegroundColor
 if ($LASTEXITCODE -ne 0) { throw 'Build failed.' }
 
 $vst3 = Join-Path $buildDir "Spacify_artefacts/$Configuration/VST3/Spacify.vst3"
+$distDir = Join-Path $root 'dist'
+$distVst3 = Join-Path $distDir 'Spacify.vst3'
+
+if (Test-Path $vst3) {
+    New-Item -ItemType Directory -Force -Path $distDir | Out-Null
+    if (Test-Path $distVst3) {
+        Remove-Item -Recurse -Force $distVst3
+    }
+    Copy-Item -Recurse -Force $vst3 $distVst3
+}
 
 Write-Host ''
 Write-Host "Built: $vst3" -ForegroundColor Green
+Write-Host "Synced: $distVst3" -ForegroundColor Green
 Write-Host "Install by copying that folder into your VST3 directory." -ForegroundColor Green

@@ -5,7 +5,8 @@ namespace spacify::ui
 
 namespace
 {
-    constexpr float nameTracking = 0.22f;
+    constexpr float nameTracking = 0.16f;
+    constexpr float referenceKnobHeight = 180.0f;
 }
 
 SpacifyKnob::SpacifyKnob (juce::AudioProcessorValueTreeState& state,
@@ -15,15 +16,18 @@ SpacifyKnob::SpacifyKnob (juce::AudioProcessorValueTreeState& state,
                           float nameFontHeightToUse,
                           float valueFontHeightToUse,
                           int spacingToUse)
-    : attachment (state, parameterID, slider),
+    : labelText (displayName),
+      attachment (state, parameterID, slider),
       format (std::move (valueFormatter)),
-      nameFontHeight (nameFontHeightToUse),
-      valueFontHeight (valueFontHeightToUse),
+      baseNameFontHeight (nameFontHeightToUse),
+      baseValueFontHeight (valueFontHeightToUse),
+      currentNameFontHeight (nameFontHeightToUse),
+      currentValueFontHeight (valueFontHeightToUse),
       spacing (spacingToUse)
 {
     slider.setSliderStyle (juce::Slider::RotaryVerticalDrag);
     slider.setTextBoxStyle (juce::Slider::NoTextBox, false, 0, 0);
-    slider.setMouseDragSensitivity (170);
+    slider.setMouseDragSensitivity (160);
     slider.setVelocityBasedMode (false);
     slider.setScrollWheelEnabled (true);
     slider.setWantsKeyboardFocus (false);
@@ -35,32 +39,39 @@ SpacifyKnob::SpacifyKnob (juce::AudioProcessorValueTreeState& state,
 
     slider.onValueChange = [this] { refreshValueText(); };
 
-    nameLabel.setText (displayName, juce::dontSendNotification);
-    nameLabel.setJustificationType (juce::Justification::centred);
-    nameLabel.setFont (makeFont (nameFontHeight, {}, nameTracking));
-    nameLabel.setColour (juce::Label::textColourId, palette::textDim);
-    nameLabel.setInterceptsMouseClicks (false, false);
-
-    valueLabel.setJustificationType (juce::Justification::centred);
-    valueLabel.setFont (makeFont (valueFontHeight, {}, 0.0f));
-    valueLabel.setColour (juce::Label::textColourId, palette::textPrimary);
-    valueLabel.setInterceptsMouseClicks (false, false);
-
     addAndMakeVisible (slider);
-    addAndMakeVisible (nameLabel);
-    addAndMakeVisible (valueLabel);
 
     refreshValueText();
+}
+
+void SpacifyKnob::paint (juce::Graphics& g)
+{
+    g.setColour (palette::textSecondary);
+    drawTrackedText (g, labelText, nameArea, juce::Justification::centred,
+                     makeFont (currentNameFontHeight, "Semibold", nameTracking), nameTracking);
+
+    g.setColour (palette::textPrimary);
+    drawTrackedText (g, valueText, valueArea, juce::Justification::centred,
+                     makeFont (currentValueFontHeight, "Semibold", 0.0f), 0.0f);
 }
 
 void SpacifyKnob::resized()
 {
     auto area = getLocalBounds();
 
-    nameLabel.setBounds (area.removeFromTop (juce::roundToInt (nameFontHeight * 1.6f)));
-    valueLabel.setBounds (area.removeFromBottom (juce::roundToInt (valueFontHeight * 1.6f)));
+    const float scale = juce::jlimit (0.55f, 2.5f,
+                                      juce::jmin ((float) area.getHeight() / referenceKnobHeight,
+                                                  (float) area.getWidth() / 160.0f));
 
-    area.reduce (spacing, 0);
+    currentNameFontHeight  = baseNameFontHeight * scale;
+    currentValueFontHeight = baseValueFontHeight * scale;
+
+    nameArea  = area.removeFromTop (juce::roundToInt (currentNameFontHeight * 1.65f));
+    valueArea = area.removeFromBottom (juce::roundToInt (currentValueFontHeight * 1.65f));
+
+    const int padX = juce::roundToInt ((float) spacing * scale);
+    const int padY = juce::jmax (2, juce::roundToInt (3.0f * scale));
+    area.reduce (padX, padY);
 
     const int knobSize = juce::jmin (area.getWidth(), area.getHeight());
 
@@ -75,10 +86,14 @@ void SpacifyKnob::mouseWheelMove (const juce::MouseEvent& event, const juce::Mou
 
 void SpacifyKnob::refreshValueText()
 {
-    const auto text = format != nullptr ? format ((float) slider.getValue())
-                                        : juce::String (slider.getValue(), 2);
+    const auto nextText = format != nullptr ? format ((float) slider.getValue())
+                                            : juce::String (slider.getValue(), 2);
 
-    valueLabel.setText (text, juce::dontSendNotification);
+    if (valueText != nextText)
+    {
+        valueText = nextText;
+        repaint (valueArea);
+    }
 }
 
 } // namespace spacify::ui

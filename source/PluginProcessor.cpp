@@ -15,8 +15,8 @@ namespace
 
     juce::NormalisableRange<float> createDecayRange()
     {
-        juce::NormalisableRange<float> range { 0.5f, 20.0f };
-        range.setSkewForCentre (5.0f);
+        juce::NormalisableRange<float> range { 0.01f, 20.0f };
+        range.setSkewForCentre (3.0f);
         return range;
     }
 }
@@ -296,7 +296,7 @@ void SpacifyAudioProcessor::processChunk (juce::AudioBuffer<float>& buffer, int 
             appliedTone = toneValue;
         }
 
-        if (std::abs (decayValue - appliedDecay) > 5.0e-3f)
+        if (std::abs (decayValue - appliedDecay) > 5.0e-4f)
         {
             reverb.setDecaySeconds (decayValue);
             appliedDecay = decayValue;

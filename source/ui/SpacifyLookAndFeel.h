@@ -8,16 +8,22 @@ namespace spacify::ui
 /** The single place where Spacify's colours live. */
 namespace palette
 {
-inline const juce::Colour backgroundTop    { 0xff161522 };
-inline const juce::Colour backgroundBottom { 0xff0a0a11 };
-inline const juce::Colour accentBlue       { 0xff7b9dff };
-inline const juce::Colour accentViolet     { 0xffb17cff };
-inline const juce::Colour textPrimary      { 0xffecedf6 };
-inline const juce::Colour textDim          { 0xff74758a };
-inline const juce::Colour knobTop          { 0xff4e4d73 };
-inline const juce::Colour knobBottom       { 0xff1b1a26 };
-inline const juce::Colour track            { 0x1affffff };
-inline const juce::Colour hairline         { 0x1cffffff };
+inline const juce::Colour canvasTop       { 0xfff7f8fb };
+inline const juce::Colour canvasBottom    { 0xffeff1f6 };
+inline const juce::Colour surface         { 0xffffffff };
+inline const juce::Colour surfaceSubtle   { 0xfffafbfd };
+inline const juce::Colour border          { 0xffe2e6ef };
+inline const juce::Colour divider         { 0xffeaedf4 };
+inline const juce::Colour track           { 0xffe2e6f0 };
+inline const juce::Colour accentPrimary   { 0xff2563eb };
+inline const juce::Colour accentSecondary { 0xff4f46e5 };
+inline const juce::Colour knobFaceTop     { 0xffffffff };
+inline const juce::Colour knobFaceBottom  { 0xfff3f5fa };
+inline const juce::Colour knobBorder      { 0xffd5dbe7 };
+inline const juce::Colour knobShadow      { 0x160f172a };
+inline const juce::Colour textPrimary     { 0xff111318 };
+inline const juce::Colour textSecondary   { 0xff646c7e };
+inline const juce::Colour textMuted       { 0xff949cae };
 }
 
 /** Type helpers so every label uses the same voice. */
@@ -43,9 +49,8 @@ public:
                            float rotaryStartAngle, float rotaryEndAngle,
                            juce::Slider&) override;
 
-    void drawToggleButton (juce::Graphics&, juce::ToggleButton&,
-                           bool shouldDrawButtonAsHighlighted,
-                           bool shouldDrawButtonAsDown) override;
+    void drawCornerResizer (juce::Graphics&, int w, int h,
+                            bool isMouseOver, bool isMouseDragging) override;
 };
 
 } // namespace spacify::ui
